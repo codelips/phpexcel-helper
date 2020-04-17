@@ -1,0 +1,20 @@
+{
+    "name": "codelips/phpexcel-helper",
+    "version": "0.1",
+    "description": "simp imp&exp excel use phpoffice/phpexcel",
+    "require": {
+        "phpoffice/phpexcel": "1.8.2"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "goe13",
+            "email": "m4a1player@126.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "PHPExcelHelper\\": "src"
+        }
+    }
+}
