@@ -150,7 +150,7 @@ class ExcelHelper
         self::setError(0, 'SUCC');
     }
 
-    protected function rowArr()
+    protected static function excelClomunKeys()
     {
         $init =  [];
         $more_init = [];
@@ -177,14 +177,14 @@ class ExcelHelper
      *     $indexKey = array('id','username','sex','age'); 
      *     $list = array(array('id'=>1,'username'=>'YQJ','sex'=>'男','age'=>24)); 
      */
-    function exportExcel($list, $filename = '', $indexKey, $startRow = 1, $excel2007 = true)
+    static function exportExcel($list, $filename, $indexKey, $startRow = 1, $excel2007 = true)
     {
         //文件引入  
 
         if (empty($filename)) $filename = time();
         if (!is_array($indexKey)) return false;
 
-        $header_arr = $this->rowArr();
+        $header_arr = self::excelClomunKeys();
 
         //初始化PHPExcel()  
         $objPHPExcel = new PHPExcel();

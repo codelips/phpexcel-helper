@@ -1,6 +1,6 @@
 {
     "name": "codelips/phpexcel-helper",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "description": "simp imp&exp excel use phpoffice/phpexcel",
     "require": {
         "phpoffice/phpexcel": "1.8.2"
