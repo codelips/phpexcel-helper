@@ -1,12 +1,14 @@
 <?php
 
-namespace PHPExcelHelper; 
+namespace PHPExcelHelper;
 
 use PHPExcel;
 use PHPExcel_Reader_CSV;
 use PHPExcel_Reader_Excel2007;
 use PHPExcel_Reader_Excel5;
 use PHPExcel_RichText;
+use PHPExcel_Writer_Excel2007;
+use PHPExcel_Writer_Excel5;
 
 class ExcelHelper
 {
@@ -56,12 +58,12 @@ class ExcelHelper
 
 
     /**
-     * @param $filePath
-     * @param array $modelMap
-     * @param array $uniqueKeys
-     * @param \Closure $insertCallBack
+     * @param $filePath 文件路径
+     * @param array $modelMap 字段名=>表头名
+     * @param array $uniqueKeys 字段名 => [值...]
+     * @param \Closure $insertCallBack 插入的数据 方法传入 从表格提取到的数据数组
      * @param string $replaceCallBack
-     * @param array $replacementMap
+     * @param array $replacementMap 唯一如果又重复 字段名=> [[替换值=>查找值]...] //TODO 完善重复后的替换
      * @param string $colStartAt
      * @param int $rowStartAt
      * @throws \PHPExcel_Exception
@@ -106,10 +108,10 @@ class ExcelHelper
         $mapNameFlip      = array_flip($modelMap);
         $map              = [];
 
-        for ($l = ord($colStartAt); $l <= $highestColumnNum; $l++) {
-            $val = self::getTrueVal($objPHPExcel, chr($l) . $rowStartAt);
+        for ($ord = ord($colStartAt); $ord <= $highestColumnNum; $ord++) {
+            $val = self::getTrueVal($objPHPExcel, chr($ord) . $rowStartAt);
             if (in_array($val, $modelMap)) {
-                $map[$mapNameFlip[$val]] = chr($l);
+                $map[$mapNameFlip[$val]] = chr($ord);
             }
         }
         $data = [];
@@ -121,21 +123,21 @@ class ExcelHelper
                 }
                 if (is_callable($replaceCallBack) && in_array($test2, $uVals)) {
                     $tmp2 = [];
-                    foreach ($map as $key => $val) {
-                        $tmp2[$key] = self::getTrueVal($objPHPExcel, $val . $i);
-                        if (array_key_exists($key, $replacementMap)) {
-                            $tmp2[$key] = (int)array_search($tmp2[$key], $replacementMap[$key]);
+                    foreach ($map as $field => $chr) {
+                        $tmp2[$field] = self::getTrueVal($objPHPExcel, $chr . $i);
+                        if (array_key_exists($field, $replacementMap)) {
+                            $tmp2[$field] = (int)array_search($tmp2[$field], $replacementMap[$field]);
                         }
                     }
                     $replaceCallBack($tmp2);
                     continue 2;
                 }
             }
-            foreach ($map as $key => $val) {
+            foreach ($map as $field => $chr) {
                 $tmp       = [];
-                $tmp[$key] = self::getTrueVal($objPHPExcel, $val . $i);
-                if (array_key_exists($key, $replacementMap)) {
-                    $tmp[$key] = (int)array_search($tmp[$key], $replacementMap[$key]);
+                $tmp[$field] = self::getTrueVal($objPHPExcel, $chr . $i);
+                if (array_key_exists($field, $replacementMap)) {
+                    $tmp[$field] = (int)array_search($tmp[$field], $replacementMap[$field]);
                 }
             }
             if (!empty($tmp)) {
@@ -146,5 +148,79 @@ class ExcelHelper
             $insertCallBack($data);
         }
         self::setError(0, 'SUCC');
+    }
+
+    protected function rowArr()
+    {
+        $init =  [];
+        $more_init = [];
+        for($i = ord('A');$i<=ord('Z');$i++){
+            $init[] = chr($i);
+        }
+        foreach ($init as $chr) {
+            foreach ($init as $chr2) {
+                $more_init[] = $chr . $chr2;
+            }
+        }
+        return array_merge($init,$more_init);
+    }
+
+
+    /** 
+     * 创建(导出)Excel数据表格 
+     * @param  array   $list        要导出的数组格式的数据 
+     * @param  string  $filename    导出的Excel表格数据表的文件名 
+     * @param  array   $indexKey    $list数组中与Excel表格表头$header中每个项目对应的字段的名字(key值) 
+     * @param  array   $startRow    第一条数据在Excel表格中起始行 
+     * @param  [bool]  $excel2007   是否生成Excel2007(.xlsx)以上兼容的数据表 
+     * 比如: $indexKey与$list数组对应关系如下: 
+     *     $indexKey = array('id','username','sex','age'); 
+     *     $list = array(array('id'=>1,'username'=>'YQJ','sex'=>'男','age'=>24)); 
+     */
+    function exportExcel($list, $filename = '', $indexKey, $startRow = 1, $excel2007 = true)
+    {
+        //文件引入  
+
+        if (empty($filename)) $filename = time();
+        if (!is_array($indexKey)) return false;
+
+        $header_arr = $this->rowArr();
+
+        //初始化PHPExcel()  
+        $objPHPExcel = new PHPExcel();
+
+        //设置保存版本格式  
+        if ($excel2007) {
+            $objWriter = new PHPExcel_Writer_Excel2007($objPHPExcel);
+            $filename = $filename . '.xlsx';
+            $mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        } else {
+            $objWriter = new PHPExcel_Writer_Excel5($objPHPExcel);
+            $filename = $filename . '.xls';
+            $mime = 'application/vnd.ms-execl';
+        }
+
+        //接下来就是写数据到表格里面去  
+        $objActSheet = $objPHPExcel->getActiveSheet();
+        //$startRow = 1;  
+        foreach ($list as $row) {
+            foreach ($indexKey as $key => $value) {
+                //这里是设置单元格的内容  
+                $objActSheet->setCellValue($header_arr[$key] . $startRow, $row[$value]);
+            }
+            $startRow++;
+        }
+
+        // 下载这个表格，在浏览器输出  
+        header("Pragma: public");
+        header("Expires: 0");
+        header("Cache-Control:must-revalidate, post-check=0, pre-check=0");
+        header("Content-Type:application/force-download");
+        header("Content-Type:".$mime);
+        header("Content-Type:application/octet-stream");
+        header("Content-Type:application/download");;
+        header('Content-Disposition:attachment;filename=' . $filename . '');
+        header("Content-Transfer-Encoding:binary");
+        $objWriter->save('php://output');
     }
 }
